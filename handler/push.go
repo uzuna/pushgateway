@@ -106,11 +106,11 @@ func Push(
 			log.Debugf("Failed to parse text, %v", err.Error())
 			return
 		}
-		if timestampsPresent(metricFamilies) {
-			http.Error(w, "pushed metrics must not have timestamps", http.StatusBadRequest)
-			log.Debug("pushed metrics must not have timestamps")
-			return
-		}
+		// if timestampsPresent(metricFamilies) {
+		// 	http.Error(w, "pushed metrics must not have timestamps", http.StatusBadRequest)
+		// 	log.Debug("pushed metrics must not have timestamps")
+		// 	return
+		// }
 		now := time.Now()
 		addPushTimestamp(metricFamilies, now)
 		sanitizeLabels(metricFamilies, labels)
@@ -224,8 +224,20 @@ func timestampsPresent(metricFamilies map[string]*dto.MetricFamily) bool {
 	return false
 }
 
+func appendPushTimestamp(metricFamilies map[string]*dto.MetricFamily, t time.Time) {
+	ms := t.UnixNano() / 1000000
+	for _, mf := range metricFamilies {
+		for _, m := range mf.GetMetric() {
+			if m.TimestampMs == nil {
+				m.TimestampMs = &ms
+			}
+		}
+	}
+}
+
 // Add metric to indicate the push time.
 func addPushTimestamp(metricFamilies map[string]*dto.MetricFamily, t time.Time) {
+	appendPushTimestamp(metricFamilies, t)
 	metricFamilies[pushMetricName] = &dto.MetricFamily{
 		Name: proto.String(pushMetricName),
 		Help: proto.String(pushMetricHelp),
